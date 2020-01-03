@@ -1,6 +1,6 @@
 # TransForm
 
-TransForm is a framework for formal specification of transistency models and automated synthesis of enhanced litmus test (ELT) suites. paper describes a vocabulary for specifying transistency models. technique described in the paper and in the included files shows how to automatically generate a comprehensive suite of ``maximally-interesting'' litmus tests specific to a given (axiomatic specification of) memory model.  This enables more rapid and more reliable exploration of sophisticated memory models such as those used by C/C++, IBM Power, and more.
+TransForm is a framework for formal specification of transistency models and automated synthesis of enhanced litmus test (ELT) suites.
 
 ## Installation
 
