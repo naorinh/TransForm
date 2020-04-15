@@ -158,7 +158,7 @@ public final class MainClass {
         A4Options options = new A4Options();
 
         // This requires 32-bit java in windows
-        //options.solver = A4Options.SatSolver.MiniSatJNI;
+        options.solver = A4Options.SatSolver.MiniSatJNI;
 
         if (commands.size() == 0) {
             // If there are no commands specified, print all commands

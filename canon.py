@@ -28,7 +28,14 @@ def follow_edge(atom, edge):
   for c in getattr(atom, edge):
     candidates.append(c)
   if len(candidates) != 1:
+    if edge == "go":
+      for candidate in candidates:
+        if re.match("ptwalk*", candidate):
+          return candidate
     raise Exception("multiple %s edges?" % edge)
+  if edge == "go":
+    if re.match("dirtybit*", candidates[0]):
+      return None
   return candidates[0]
 
 def follow_edge_tr(atoms, atom, edge):

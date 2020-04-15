@@ -53,12 +53,23 @@ T | start of thread
 R | Read
 W | Write
 ptw | ptwalk
-dbR | dirtybitRead
-dbW | dirtybitWrite
 F | MFENCE
 I | INVLPG
 a*n* | Address *n*
 m | Read half of a read-modify-write
+
+## Test Comparison
+
+To compare tests that can be synthesized by TransForm against existing tests, we have a script that categorizes inputted tests as:
+1. minimal and synthesizable as-is
+2. can be minimized and then synthesized
+3. always permitted but can be synthesized as subset of larger test
+
+The comparison tool uses a default bound of 10 instructions to check if tests fall into these categories. If not, they require a higher bound. This bound can be changed in each tso_transistency_perturbed_*.als model in the fact under the `// check if synthesized` comment.
+
+Usage:
+
+    python test_comparison.py
 
 ## Questions?
 
@@ -66,4 +77,4 @@ Please contact Naorin Hossain at nhossain@princeton.edu.
 
 ## Disclaimer
 
-All files have been derived from [prior work](https://github.com/NVlabs/litmustestgen) on automated litmus test suite synthesis by Daniel Lustig, Andy Wright, Alexandros Papakonstantinou, and Olivier Giroux. We have left much of the structure of the tool in tact so that memory models explored in this prior work can easily be used and extended with TransForm to define their transistency models and synthesize their respective ELT suites.
+Most files (canon.py, MainClass.java, run.sh, tso_transistency_perturbed.als + all variants) have been derived from [prior work](https://github.com/NVlabs/litmustestgen) on automated litmus test suite synthesis by Daniel Lustig, Andy Wright, Alexandros Papakonstantinou, and Olivier Giroux. We have left much of the structure of the tool in tact so that memory models explored in this prior work can easily be used and extended with TransForm to define their transistency models and synthesize their respective ELT suites.
