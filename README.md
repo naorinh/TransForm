@@ -77,4 +77,4 @@ Please contact Naorin Hossain at nhossain@princeton.edu.
 
 ## Disclaimer
 
-Most files (canon.py, MainClass.java, run.sh, tso_transistency_perturbed.als + all variants) have been derived from [prior work](https://github.com/NVlabs/litmustestgen) on automated litmus test suite synthesis by Daniel Lustig, Andy Wright, Alexandros Papakonstantinou, and Olivier Giroux. We have left much of the structure of the tool in tact so that memory models explored in this prior work can easily be used and extended with TransForm to define their transistency models and synthesize their respective ELT suites.
+Several files (canon.py, MainClass.java, run.sh, tso_transistency_perturbed.als + all variants) have been built on top of [prior work](https://github.com/NVlabs/litmustestgen) on automated litmus test suite synthesis by Daniel Lustig, Andy Wright, Alexandros Papakonstantinou, and Olivier Giroux. We have left much of the structure of the tool in tact so that other memory models explored in this prior work can easily be used and extended with TransForm to define their transistency models and synthesize their respective ELT suites.
