@@ -24,16 +24,16 @@ pred rmw_atomicity[p: PTag->univ] {
 pred causality[p: PTag->univ] {
   acyclic[rfe_p[p] + co_p[p] + fr_p[p] + ppo_p[p] + fence_p[p]]
 }
-pred ptw_com_preserved[p: PTag->univ] {
-  acyclic[rfi_p[p] + coi_p[p] + fri_p[p] + ptwSource_p[p]]
+pred tlb_causality[p: PTag->univ] {
+  acyclic[rf_p[p] + co_p[p] + fr_p[p] + ptw_source_p[p]]
 }
-pred pte_access_order_preserved[p: PTag->univ] {
+pred invlpg[p: PTag->univ] {
   acyclic[fr_va_p[p] + trans_po_p[p] + remap_p[p]]
 }
 
 pred transistency_model[p: PTag->univ] {
-  ptw_com_preserved[p]
-  pte_access_order_preserved[p]
+  tlb_causality[p]
+  invlpg[p]
   tso_p[p]
 }
 
@@ -51,8 +51,8 @@ fun ppo_p[p: PTag->univ] : MemoryEvent->MemoryEvent {
   -
   ((Write - ((Read - p[RD]).rmw))->((Read - p[RD]) - Write.~rmw))
 }
-fun ptwSource_p[p: PTag->univ] : MemoryEvent->MemoryEvent {
-  ((MemoryEvent - p[RE]) <: go :> (ptwalk - p[RE])).(rf_ptw :> (MemoryEvent - go.ptwalk - p[RE]))
+fun ptw_source_p[p: PTag->univ] : MemoryEvent->MemoryEvent {
+  ((MemoryEvent - p[RE]) <: ghost :> (ptwalk - p[RE])).(rf_ptw :> (MemoryEvent - ghost.ptwalk - p[RE]))
 }
 fun remap_p[p: PTag->univ] : MemoryEvent->Fence {
   (pte_map.pte_mapping - p[RE]) <: remap :> (INVLPG - p[RE])
@@ -86,7 +86,7 @@ abstract sig Event { po: lone Event }
 abstract sig MemoryEvent extends Event {
   address: one VirtualAddress,
   dep: set MemoryEvent,
-  go: set {ptwalk + dirtybit}
+  ghost: set {ptwalk + dirtybit}
 }
 
 abstract sig ReadOps extends MemoryEvent { }
@@ -129,7 +129,7 @@ sig INVLPG extends Fence {
     page: one VirtualAddress
 }
 
-fun ghost : Event {ptwalk + dirtybit}
+fun ghostinstr : Event {ptwalk + dirtybit}
 
 fun rmwinstr : Event { rmw.Write + Read.rmw }
 
@@ -150,15 +150,15 @@ fact { all disj e, e': Event | e->e' in com => SamePhysicalAddress[e, e'] }
 // Program order is sane
 fact { acyclic[po] }
 fact po_prior { all e: Event | lone e.~po }
-fact { all e: Event | one t: Thread | t->e in {start.*po + start.*po.go} }
+fact { all e: Event | one t: Thread | t->e in {start.*po + start.*po.ghost} }
 fun po_loc_normal : MemoryEvent->MemoryEvent { ^po & { same_pa_normal
                         + {Read + Write - Write.rf_pa - fr_pa.Write - pte_map.pte_mapping} <: address.~address :> {Read + Write - Write.rf_pa - fr_pa.Write - pte_map.pte_mapping} } }
-fun po_loc_pte : MemoryEvent->MemoryEvent { {^po + ^po.go + ~go.^po.go} & {{pte_map.pte_mapping + ghost} <: address.~address :> {pte_map.pte_mapping + ghost}} }
+fun po_loc_pte : MemoryEvent->MemoryEvent { {^po + ^po.ghost + ~ghost.^po.ghost} & {{pte_map.pte_mapping + ghostinstr} <: address.~address :> {pte_map.pte_mapping + ghostinstr}} }
 fun po_loc : MemoryEvent->MemoryEvent { po_loc_normal + po_loc_pte }
 
 
 // Ghost not part of program
-fact no_po_ghost { no g: ghost | g in { Event.po + po.Event } }
+fact no_po_ghost { no g: ghostinstr | g in { Event.po + po.Event } }
 
 // Dependencies go from Reads to Reads or Writes
 fact { dep in Read <: ^po }
@@ -227,7 +227,7 @@ fact { all disj e, e': Event | e->e' in {r_fr_va.r_rf_pa + r_fr_va.w_rf_pa + w_f
 fact { all w: Write | w in (Read.~r_rf_pa + Write.~w_rf_pa + Write.co_pa + Write.~co_pa + Read.r_fr_pa + Write.w_fr_pa + Read.r_fr_va + Write.w_fr_va) => ChangesPTE[w] }
 
 // ghost instructions and PTE writes must access PTE
-fact { all e: Event | (ChangesPTE[e] or (e in ghost)) => some e.address.pte }
+fact { all e: Event | (ChangesPTE[e] or (e in ghostinstr)) => some e.address.pte }
 
 // normal instructions only access data
 fact { all e: Event | IsNormalReadWrite[e] => no e.address.pte }
@@ -279,25 +279,25 @@ fact rmw_writes { all w: Write | w in Read.rmw => IsNormalReadWrite[w] }
 // ghost instructions
 
 // ghost instructions are on the same thread as the triggering instruction, even though they are not connected by po edges
-fact { all g: ghost | SameThread[g, GhostInstructionSource[g]] }
+fact { all g: ghostinstr | SameThread[g, GhostInstructionSource[g]] }
 
-fact { all g: ghost | one GhostInstructionSource[g] }
+fact { all g: ghostinstr | one GhostInstructionSource[g] }
 
-// normal read or write in each go source
-fact { all e: Event | e in go.Event => IsNormalReadWrite[e] }
+// normal read or write in each ghost source
+fact { all e: Event | e in ghost.Event => IsNormalReadWrite[e] }
 
-// ghost at each go sink
-fact { all e: Event | e in Event.go => e in ghost }
+// ghostinstr at each ghost sink
+fact { all e: Event | e in Event.ghost => e in ghostinstr }
 
 // only normal instructions get ghost instructions
-fact { all g: ghost | IsNormalReadWrite[GhostInstructionSource[g]] }
+fact { all g: ghostinstr | IsNormalReadWrite[GhostInstructionSource[g]] }
 
 // ghost instructions access correct PTE
-fact { all g: ghost | g.address.pte.map = GhostInstructionSource[g].address }
+fact { all g: ghostinstr | g.address.pte.map = GhostInstructionSource[g].address }
 
-fact { all g: ghost | GhostInstructionSource[g] in Write.rf_pa => g.address = (rf_pa.(GhostInstructionSource[g])).address }
+fact { all g: ghostinstr | GhostInstructionSource[g] in Write.rf_pa => g.address = (rf_pa.(GhostInstructionSource[g])).address }
 
-fact ptwalk_ordering { all i: ptwalk | i in Event.go }
+fact ptwalk_ordering { all i: ptwalk | i in Event.ghost }
 
 // ptwalk only for normal instructions
 fact { all e: ptwalk.rf_ptw | IsNormalReadWrite[e] }
@@ -309,17 +309,17 @@ fact ptwalk_necessary { all e: Event | IsNormalReadWrite[e] =>
                             and p->e in rf_ptw }
 
 // source of ptwalk also has rf_ptw edge from that ptwalk
-fact { all e: Event | all p: ptwalk | e->p in go => p->e in rf_ptw }
+fact { all e: Event | all p: ptwalk | e->p in ghost => p->e in rf_ptw }
 
 fact lone_source_ptw { rf_ptw.~rf_ptw in iden }
 
 fact ptw_address { all e: ptwalk.rf_ptw | (rf_ptw.e).address.pte.map = e.address }
 
 // dirty bit updates occur for all Writes and nowhere else
-fact dirty_bit_ordering { all d: dirtybit | d in {Write - pte_map.pte_mapping}.go }
+fact dirty_bit_ordering { all d: dirtybit | d in {Write - pte_map.pte_mapping}.ghost }
 
 fact dirty_for_every_write { all w: Write | IsNormalReadWrite[w] =>
-                            (one d: dirtybit | d in w.go) }
+                            (one d: dirtybit | d in w.ghost) }
 
 fact one_type_of_write { all w: Write | IsNormalReadWrite[w] or (!IsNormalReadWrite[w] and ChangesPTE[w]) }
 
@@ -346,6 +346,14 @@ fact invlpg_with_purpose { all i: INVLPG - Write.remap | some e: MemoryEvent | P
 
 // no thread with just INVLPG
 fact invlpg_plus_more { all i: Fence | some e: MemoryEvent | ProgramOrder[i, e] or ProgramOrder[e, i] }
+
+// MFENCE
+
+// no MFENCE at end of thread
+fact no_mfence_end { MFENCE in po.Event }
+
+// no back-to-back MFENCEs
+fact no_btb_mfence { no (MFENCE->MFENCE & po) }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // =Model of memory, under perturbation=
@@ -380,7 +388,7 @@ fun fr_va_p[p: PTag->univ] : MemoryEvent->Write { (MemoryEvent - p[RE]) <: fr_va
 // =Shortcuts=
 
 fun same_thread [rel: Event->Event] : Event->Event {
-  rel & ( iden + ^po + ~^po + ^po.go + ~^po.go )
+  rel & ( iden + ^po + ~^po + ^po.ghost + ~^po.ghost )
 }
 
 fun com[] : MemoryEvent->MemoryEvent { rf + fr + co }
@@ -399,6 +407,7 @@ fun fri_p[p: PTag->univ] : MemoryEvent->MemoryEvent { same_thread[fr_p[p]] }
 fun fre_p[p: PTag->univ] : MemoryEvent->MemoryEvent { fr_p[p] - fri_p[p] }
 fun coi_p[p: PTag->univ] : MemoryEvent->MemoryEvent { same_thread[co_p[p]] }
 fun coe_p[p: PTag->univ] : MemoryEvent->MemoryEvent { co_p[p] - coi_p[p] }
+fun comi_p[p: PTag->univ] : MemoryEvent->MemoryEvent { rfi_p[p] + fri_p[p] + coi_p[p] }
 
 ////////////////////////////////////////////////////////////////////////////////
 // =Alloy helpers=
@@ -421,7 +430,7 @@ pred IsAnyWrite[e: Event] { e in WriteOps }
 pred IsNormalReadWrite[e: Event] { (e in Write and !ChangesPTE[e]) or (e in Read) } // includes RMW
 pred IsNormal[e: Event] { e in (Read + Write - rmwinstr) }
 pred IsINVLPG[e: Event] { e in INVLPG }
-pred SameThread[e: Event, e': Event] { (e->e' in ^po + ^~po) or (e->e' in go + ~go) or (e->e' in ^po.go + ^~po.go + ~go.^po + ~go.^~po) }
+pred SameThread[e: Event, e': Event] { (e->e' in ^po + ^~po) or (e->e' in ghost + ~ghost) or (e->e' in ^po.ghost + ^~po.ghost + ~ghost.^po + ~ghost.^~po) }
 pred SameEvent[e: Event, e': Event] { e->e' in iden }
 pred ProgramOrder[e: Event, e': Event] { e->e' in ^po }
 
@@ -436,13 +445,13 @@ pred SamePhysicalAddress[e: Event, e': Event] {
     ( ChangesPTE[e] =>   // PTE Write
         ( ChangesPTE[e'] and  // normal Write
             e->e' in address.~address ) or
-        ( e' in ghost and
+        ( e' in ghostinstr and
             e->e' in address.~address ) )
     and
-    ( e in ghost =>
+    ( e in ghostinstr =>
         ( ChangesPTE[e'] and  // normal Write
             e->e' in address.~address ) or
-        ( e' in ghost and
+        ( e' in ghostinstr and
             e->e' in address.~address ) ) ) )
 }
 
@@ -467,7 +476,7 @@ pred ChangesPTE[e: Event] {
 }
 
 fun GhostInstructionSource[g: Event] : Event {
-    go.g
+    ghost.g
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -476,7 +485,7 @@ fun GhostInstructionSource[g: Event] : Event {
 fact {
   (all a: VirtualAddress | (no a.pte => some (a.~address) :> Write))
   or
-  (some a: pte.map.VirtualAddress | ((some (a.~address) :> Write) and (some (a.~address) :> ghost)))
+  (some a: pte.map.VirtualAddress | ((some (a.~address) :> Write) and (some (a.~address) :> ghostinstr)))
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -486,7 +495,7 @@ let interesting_not_axiom[axiom] {
   not axiom[no_p]
 
   // All events must be relevant and minimal
-  all e: Event - ghost - Write.remap | transistency_model[RE->(e + e.rmw + e.~rmw + e.go + e.remap)]
+  all e: Event - ghostinstr - Write.remap | transistency_model[RE->(e + e.rmw + e.~rmw + e.ghost + e.remap)]
   all e: Read | transistency_model[RD->e] or no e.dep
 }
 
@@ -508,23 +517,11 @@ run causality {
 } for 5
 
 // 4 instructions min
-run pte_access_order_preserved {
-  interesting_not_axiom[pte_access_order_preserved]
+run invlpg {
+  interesting_not_axiom[invlpg]
 } for 4
 
 // 4 instructions min
-run ptw_com_preserved {
-  interesting_not_axiom[ptw_com_preserved]
-} for 4
-
-run union {
-  interesting_not_axiom[sc_per_loc]
-  or
-  interesting_not_axiom[rmw_atomicity]
-  or
-  interesting_not_axiom[causality]
-  or
-  interesting_not_axiom[pte_access_order_preserved]
-  or
-  interesting_not_axiom[ptw_com_preserved]
+run tlb_causality {
+  interesting_not_axiom[tlb_causality]
 } for 4

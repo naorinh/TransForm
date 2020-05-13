@@ -5,9 +5,9 @@ if [ -z $3 ]; then
 fi
 
 TESTSFILE=$1
-CANONICALIZER="$PYTHON canon.py"
+DEDUPLICATER="./deduplicate.py"
 TIMESTAMP=`date +'%Y%m%d-%H%M%S'`
 ALLOYPATH=.
 #echo "# Tests file: $TESTSFILE"
 
-time java $JAVAFLAGS -classpath $ALLOYPATH:$ALLOYPATH/alloy4.2.jar MainClass -f $TESTSFILE -b ${@:2} | $CANONICALIZER $TIMESTAMP-$3-$2
+time java $JAVAFLAGS -classpath $ALLOYPATH:$ALLOYPATH/alloy4.2.jar MainClass -f $TESTSFILE -b ${@:2} | $DEDUPLICATER $TIMESTAMP-$3-$2
