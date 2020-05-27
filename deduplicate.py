@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+# TransForm: Formally Specifying Transistency Models and Synthesizing Enhanced Litmus Tests
+# Naorin Hossain, Caroline Trippel, Margaret Martonosi
+# ISCA 2020
+#
+# Copyright (c) 2020 Naorin Hossain
+#
+# This file is licensed under the GNU General Public License.  See LICENSE for details.
+
 import sys
 import re
 import xml.etree.ElementTree as ET

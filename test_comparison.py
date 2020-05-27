@@ -1,22 +1,20 @@
 #!/usr/bin/env python
+
+# TransForm: Formally Specifying Transistency Models and Synthesizing Enhanced Litmus Tests
+# Naorin Hossain, Caroline Trippel, Margaret Martonosi
+# ISCA 2020
+#
+# Copyright (c) 2020 Naorin Hossain
+#
+# This file is licensed under the GNU General Public License.  See LICENSE for details.
+
 import time
 import subprocess
-
-
-# measure process time
-# t0 = time.clock()
-# procedure()
-# fout.write(time.clock() - t0, "seconds process time"
-
-# measure wall time
-# t0 = time.time()
-# procedure()
-# fout.write(time.time() - t0, "seconds wall time"
 
 def main():
   tests = {}
  
-  fout = open("handwritten_test_comparison_bound9.txt", 'w') # TODO: this should be a path to an output file -- can be anything
+  fout = open("handwritten_test_comparison_bound10.txt", 'w') # TODO: this should be a path to an output file -- can be anything
 
   with open("tests.txt", 'r') as fin: # TODO: path to tests.txt
     for line in fin:

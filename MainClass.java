@@ -160,6 +160,9 @@ public final class MainClass {
         // This requires 32-bit java in windows
         options.solver = A4Options.SatSolver.MiniSatJNI;
 
+        // Alloy's internal symmetry breaking parameter; lower values = more symmetric instances synthesized
+        options.symmetry = 100;
+
         if (commands.size() == 0) {
             // If there are no commands specified, print all commands
             System.err.println("No commands specified. List of all available commands:");
