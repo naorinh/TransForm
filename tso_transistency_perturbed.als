@@ -94,7 +94,7 @@ abstract sig Event { po: lone Event }
 abstract sig MemoryEvent extends Event {
   address: one VirtualAddress,
   dep: set MemoryEvent,
-  ghost: set {ptwalk + dirtybit}
+  ghost: set {ptwalk + dirtybit}  // (V)
 }
 
 abstract sig ReadOps extends MemoryEvent {
@@ -133,7 +133,7 @@ abstract sig Fence extends Event {}
 // Access Types
 
 sig ptwalk extends ReadOps {
-    rf_ptw: set {Read + Write}
+    rf_ptw: set {Read + Write}  // (IX)
 }
 sig dirtybit extends WriteOps { }
 sig MFENCE extends Fence { }
@@ -156,7 +156,7 @@ fun same_pa_normal : Event->Event {
 ////////////////////////////////////////////////////////////////////////////////
 // =Constraints on basic model of memory=
 
-// All communication is via accesses to the same address
+// (II) All communication is via accesses to the same address
 fact { all disj e, e': Event | e->e' in com => SamePhysicalAddress[e, e'] }
 
 // Program order is sane
@@ -169,7 +169,7 @@ fun po_loc_pte : MemoryEvent->MemoryEvent { {^po + ^po.ghost + ~ghost.^po + ~gho
 fun po_loc : MemoryEvent->MemoryEvent { po_loc_normal + po_loc_pte }
 
 
-// Ghost not part of program
+// (I) Ghost not part of program
 fact no_po_ghost { no g: ghostinstr | g in { Event.po + po.Event } }
 
 // Dependencies are from Reads to Reads or Writes
@@ -251,7 +251,7 @@ fact { all e: Event | (ChangesPTE[e] or (e in ghostinstr)) => some e.address.pte
 // user-facing instructions only access data
 fact { all e: Event | IsNormalReadWrite[e] => no e.address.pte }
 
-// no remapping between _pa edge events
+// (XV) no remapping between _pa edge events
 fact { all w: pte_map.pte_mapping | all e: Event | w->e in rf_pa and SameThread[w, e] => w->e in ^po and !(some w': pte_map.pte_mapping | e->w' in fr_va and e.address = w'.address.pte.map and w->w' in ^po and w'->e in ^po) }
 
 // same VA for same PTE Write source
@@ -261,7 +261,7 @@ fact lone_source_write_pte { rf_pa.~rf_pa in iden }
 
 fact rf_pa_same_pte { all e: Event | e in Write.rf_pa => e.address = e.~rf_pa.address.pte.map }
 
-// all initial accesses to some PA should have same fr_pa edges
+// (XVII) all initial accesses to some PA should have same fr_pa edges
 fact { all disj e, e': Event | SameVirtualAddress[e, e'] and DataFromInitialStateAtPTE[e] and DataFromInitialStateAtPTE[e'] and (e in fr_pa.Write or e' in fr_pa.Write) => e->e' in fr_pa.~fr_pa }
 
 // all writes to same PA should be in ^co
@@ -270,7 +270,7 @@ fact { all disj w, w': WriteOps | SamePhysicalAddress[w, w'] => (w->w' in ^co or
 // all PTE writes for same PA should be connected via co_pa
 fact { rf_pa.fr_pa in co_pa }
 
-// PTE maps different VA in fr_pa edges
+// (XVI) PTE maps different VA in fr_pa edges
 fact { all e: Event | all w: Write | e->w in fr_pa => not e.address = w.address.pte.map }
 
 // same VA diff PA if separated by fr_va edge
@@ -279,7 +279,7 @@ fact { all disj e, e': MemoryEvent | SameVirtualAddress[e, e'] and some e.fr_va 
 // fr_va means PTE mappings can't be in co_pa
 fact { all e: Event | all disj w, w': Write | e->w in {fr_pa + ~rf_pa} and e->w' in fr_va => not w->w' in {co_pa + ~co_pa} }
 
-// VAs are only remapped to new PAs
+// (XVI) VAs are only remapped to new PAs
 fact { all disj w, w': Write | w->w' in co_pa => !SameVirtualAddress[w, w'] }
 
 fact no_pte_write_between_rf_pa { all e: Event | e in Write.rf_pa and ProgramOrder[rf_pa.e, e] => !(some w: Write | ChangesPTE[w] and ProgramOrder[rf_pa.e, w] and ProgramOrder[w, e] and w.address.pte.map = e.address) }
@@ -289,11 +289,11 @@ pred rf_pa_restrict { all e: MemoryEvent | all w: Write | ChangesPTE[w] and w.ad
                                       !(some w': Write | ChangesPTE[w'] and w'.address.pte.map = e.address and ProgramOrder[w, w'] and ProgramOrder[w', e]) =>
                                       (w->e in rf_pa or !SameThread[e, rf_pa.e]) }
 
-// rf_pa and fr_va should correspond to ^com edges with ptwalk
+// (XIV) rf_pa and fr_va should correspond to ^com edges with ptwalks and the PTE write
 fact { all disj e,e': Event | e->e' in rf_pa => e->(rf_ptw.e') in ^com }
 fact { all disj e,e': Event | e->e' in fr_va => (rf_ptw.e)->e' in ^com }
 
-// no intervening PTE Write between ptwalk accessing a mapping written by a specific PTE Write and that PTE Write
+// (XV) no intervening PTE Write between ptwalk accessing a mapping written by a specific PTE Write and that PTE Write
 fact { all disj e,e',e'': Event | e->e' in rf_pa and e->e'' in co => e->(rf_ptw.e') in ^com and (rf_ptw.e')->e'' in ^com }
 
 // rmws
@@ -307,9 +307,10 @@ fact rmw_writes { all w: Write | w in Read.rmw => IsNormalReadWrite[w] }
 
 // ghost instructions
 
-// ghost instructions are on the same thread as the triggering instruction, even though they are not connected by po edges
+// (VII) ghost instructions are on the same thread as the triggering instruction, even though they are not connected by po edges
 fact { all g: ghostinstr | SameThread[g, GhostInstructionSource[g]] }
 
+// (IV)
 fact { all g: ghostinstr | one GhostInstructionSource[g] }
 
 // user-facing read or write at each ghost source
@@ -318,7 +319,7 @@ fact { all e: Event | e in ghost.Event => IsNormalReadWrite[e] }
 // ghostinstr at each ghost sink
 fact { all e: Event | e in Event.ghost => e in ghostinstr }
 
-// only user-facing instructions invoke ghost instructions
+// (III) only user-facing instructions invoke ghost instructions
 fact { all g: ghostinstr | IsNormalReadWrite[GhostInstructionSource[g]] }
 
 // ghost instructions access correct PTE
@@ -326,9 +327,10 @@ fact { all g: ghostinstr | g.address.pte.map = GhostInstructionSource[g].address
 
 fact { all g: ghostinstr | GhostInstructionSource[g] in Write.rf_pa => g.address = (rf_pa.(GhostInstructionSource[g])).address }
 
+// (VI)
 fact ptwalk_ordering { all i: ptwalk | i in Event.ghost }
 
-// TLB loaded by a ptwalk only accessed by user-facing instructions
+// (XII) TLB loaded by a ptwalk only accessed by user-facing instructions
 fact { all e: ptwalk.rf_ptw | IsNormalReadWrite[e] }
 
 fact ptwalk_necessary { all e: Event | IsNormalReadWrite[e] =>
@@ -337,16 +339,18 @@ fact ptwalk_necessary { all e: Event | IsNormalReadWrite[e] =>
                             or e = GhostInstructionSource[p]) 
                             and p->e in rf_ptw }
 
-// source of ptwalk also has rf_ptw relation with that ptwalk
+// (VI, XI) source of ptwalk also has rf_ptw relation with that ptwalk
 fact { all e: Event | all p: ptwalk | e->p in ghost => p->e in rf_ptw }
 
+// (VI, X)
 fact lone_source_ptw { rf_ptw.~rf_ptw in iden }
 
 fact ptw_address { all e: ptwalk.rf_ptw | (rf_ptw.e).address.pte.map = e.address }
 
-// dirty bit updates occur for all user-facing Writes and nowhere else
+// (VI) dirty bit updates occur for all user-facing Writes and nowhere else
 fact dirty_bit_ordering { all d: dirtybit | d in {Write - pte_map.pte_mapping}.ghost }
 
+// (VI, VIII)
 fact dirty_for_every_write { all w: Write | IsNormalReadWrite[w] =>
                             (one d: dirtybit | d in w.ghost) }
 
@@ -354,17 +358,20 @@ fact one_type_of_write { all w: Write | IsNormalReadWrite[w] or (!IsNormalReadWr
 
 // INVLPG
 
-// INVLPG on all threads after PTE Write
+// (XVIII) INVLPG on all threads after PTE Write
 fact { all w: pte_map.pte_mapping | all t: Thread | some i: INVLPG | OnThread[i, t] and w.address.pte.map = i.page and i in w.remap }
+// (XIX)
 fact { all w: pte_map.pte_mapping | some i: INVLPG | w.po = i and w.address.pte.map = i.page and i in w.remap }
+// (XXI)
 fact { no {~remap.remap & ^po} }
 
+// (XX)
 fact lone_source_remap { remap.~remap in iden }
 
 // remap for PTE Writes only
 fact { all w: Write | w in remap.INVLPG => ChangesPTE[w] }
 
-// rf_ptw edges for VA can't cross INVLPG
+// (XIII) rf_ptw edges for VA can't cross INVLPG
 fact { all e: MemoryEvent | e.address in INVLPG.page and e in {INVLPG.^po + ^po.INVLPG} and GhostInstructionSource[rf_ptw.e] in {INVLPG.^po + ^po.INVLPG} =>
                                         some i: INVLPG | SameVirtualAddress[e, i] and ((ProgramOrder[e, i] and ProgramOrder[GhostInstructionSource[rf_ptw.e], i]) or (ProgramOrder[i, e] and ProgramOrder[i, GhostInstructionSource[rf_ptw.e]])) }
 
