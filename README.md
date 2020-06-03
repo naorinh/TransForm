@@ -70,7 +70,7 @@ To compare tests that can be synthesized by TransForm against existing tests, we
 2. can be minimized and then synthesized
 3. uninteresting or requires a higher bound
 
-The comparison tool uses a default bound of 10 instructions with the x86t_elt model and ELTs from prior work to check if the ELTs from prior work fall into these categories. This bound can be changed in each tso_transistency_perturbed_*.als model in the fact under the `// check if synthesized` comment. ELTs that are compared are listed in the tests.txt file. Using a different set of tests requires adding the tests to each model file and listing them in tests.txt.
+The comparison tool in the util directory (test_comparison.py) uses a default bound of 10 instructions with the x86t_elt model and ELTs from prior work to check if the ELTs from prior work fall into these categories. This bound can be changed in each tso_transistency_perturbed_*.als model in the util directory with the fact under the `// check if synthesized` comment. ELTs that are compared are listed in the util/tests.txt file. Using a different set of tests requires adding the tests to each model file and listing them in tests.txt.
 
 Usage:
 
@@ -86,19 +86,19 @@ Then, the instances found in the outputted file can be parsed to generate graphs
 
     $PYTHON generate-graphs-elts.py -i <input file> -o <output file prefix> -g <directory to create graph directory in>
 
-where the input file should be the instance_output_file. A full directory of instance_output_files can also be directly used to generate graphs for all included instance_output_files. To do so, name the directory rather than the input file with the -i flag and follow up with -d:
+where generate-graphs-elts.py can be found in util and the input file should be the instance_output_file. A full directory of instance_output_files can also be directly used to generate graphs for all included instance_output_files. To do so, name the directory rather than the input file with the -i flag and follow up with -d:
 
     $PYTHON generate-graphs-elts.py -i <input directory> -d -g <directory to create graph directory in>
 
 In this case, the output file prefix is not needed as the filenames of files in the input directory will be used as the output file prefixes.
 
-Next, generate PNG images of the graphs:
+Next, generate PNG images of the graphs with the generate-images-elts.py script in the util directory:
 
     $PYTHON generate-images-elts.py -i <input graph directory> -o <output imgs directory>
 
 ## Updating Relation Placement Rules and Regression Testing to Compare Synthesized ELTs
 
-The relation placement rules that have been used for the TransForm work (described briefly below) can be modified to make different assumptions about how these relations should be inserted in synthesized ELTs. To compare modified models against prior iterations of a model, we provide a regression test script (test_suite_regression.py) that will output whether the synthesized suites of unique ELTs are identical between model updates or which ELTs are unique to each suite (original vs. modified model).
+The relation placement rules that have been used for the TransForm work (described briefly below) can be modified to make different assumptions about how these relations should be inserted in synthesized ELTs. To compare modified models against prior iterations of a model, we provide a regression test script (util/test_suite_regression.py) that will output whether the synthesized suites of unique ELTs are identical between model updates or which ELTs are unique to each suite (original vs. modified model).
 
 To use the regression test script:
 
